@@ -6,7 +6,12 @@ import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestMethod;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -17,6 +22,7 @@ public class SurveyResourceIT {
     private static String GET_ALL_QUESTIONS_URL = "/surveys/Survey1/questions";
     private static String GET_ALL_SURVEYS_URL = "/surveys";
     private static String GET_SPECIFIC_SURVEY_URL = "/surveys/Survey1";
+    private static String POST_SURVEY_URL = "/surveys/Survey1/questions";
     @Autowired
     private TestRestTemplate template;
 
@@ -147,5 +153,38 @@ public class SurveyResourceIT {
         assertEquals("application/json", responseEntity.getHeaders().get("Content-Type").get(0));
         JSONAssert.assertEquals(expectedResponse, responseEntity.getBody(), false);
     }
+
+    @Test
+    void addNewSurveyQuestion_BasicScenario() {
+
+        String requestBody = """
+                         {
+                         "description": "My Favourite Cloud Platform Today",
+                         "options": [
+                           "AWS",
+                           "Azure",
+                           "Google Cloud",
+                           "Oracle Cloud"
+                         ],
+                         "correctAnswer": "AWS"
+                         }
+                """;
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Type","application/json");
+
+        HttpEntity<String> httpEntity = new HttpEntity<>(requestBody, headers);
+
+        ResponseEntity<String> responseEntity = template.exchange(POST_SURVEY_URL, HttpMethod.POST, httpEntity, String.class, requestBody);
+
+        assertTrue(responseEntity.getStatusCode().is2xxSuccessful());
+
+        String locationHeader = responseEntity.getHeaders().get("Location").get(0);
+        assertTrue(locationHeader.contains("/surveys/Survey1/questions/"));
+
+        //Delete Created
+        template.delete(locationHeader);
+
+    }
+
 
 }
